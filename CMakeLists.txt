@@ -34,7 +34,6 @@
 ##
 ##-*****************************************************************************
 
-PROJECT( MAYA_GPU_CACHE_TRANSALTOR )
 
 SET( H_FILES
 )
@@ -49,7 +48,12 @@ SET( MTOA_TEMPLATE_FILES
 
 SET( SOURCE_FILES ${CXX_FILES} ${H_FILES} )
 
-SET( CORE_LIBS )
+
+# SET( CORE_LIBS
+#   AlembicAbc
+#   AlembicAbcCoreAbstract
+#   AlembicUtil )
+
 
 INCLUDE_DIRECTORIES( ".." )
 INCLUDE_DIRECTORIES( "../lib" )
@@ -63,10 +67,12 @@ ADD_MAYA_CXX_PLUGIN( bb_gpuCacheTranslator ${SOURCE_FILES} )
 TARGET_LINK_LIBRARIES( bb_gpuCacheTranslator
   ${MAYA_LIBRARIES}
   ${CORE_LIBS}
+  ${ALEMBIC_ILMBASE_LIBS}
   ${ALEMBIC_MTOA_LIBMTOA}
   ${ALEMBIC_ARNOLD_LIBARNOLD}
   ${CMAKE_THREAD_LIBS_INIT}
   ${ZLIB_LIBRARIES} ${EXTERNAL_MATH_LIBS} )
+ALEMBIC_SET_PROPERTIES(bb_gpuCacheTranslator)
 
 INSTALL( TARGETS bb_gpuCacheTranslator
          DESTINATION mtoa/$ENV{MAYA_VERSION}/translator )

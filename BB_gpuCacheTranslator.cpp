@@ -34,6 +34,24 @@ std::string replace_all(const MString &str, const char *from, const char *to)
     return result;
 }
 
+
+union DJB2HashUnion{
+    unsigned int hash;
+    int hashInt;
+};
+
+int DJB2Hash(unsigned char *str)
+{
+    DJB2HashUnion hashUnion;
+    hashUnion.hash = 5381;
+    int c;
+
+    while ((c = *str++))
+        hashUnion.hash = ((hashUnion.hash << 5) + hashUnion.hash) + c; /* hash * 33 + c */
+
+    return hashUnion.hashInt;
+}
+
 class BB_gpuCacheTranslator : public CShapeTranslator
 {
 
@@ -54,26 +72,29 @@ class BB_gpuCacheTranslator : public CShapeTranslator
                 }
 
 
+                virtual void RequestUpdate()
+                {
+                    SetUpdateMode(AI_RECREATE_NODE);
+                    CShapeTranslator::RequestUpdate();
+                }
+
+
 
                 virtual void Export( AtNode* instance )
                 {
-                  Update(instance);
-                }
-
-                virtual void Update(AtNode* node)
-                {
-                   const char* nodeType = AiNodeEntryGetName(AiNodeGetNodeEntry(node));
+                   const char* nodeType = AiNodeEntryGetName(AiNodeGetNodeEntry(instance));
                    if (strcmp(nodeType, "ginstance") == 0)
                    {
-                      ExportInstance(node, m_masterDag);
+                      ExportInstance(instance, m_masterDag, false);
                    }
                    else
                    {
-                      ExportProcedural(node);
+
+                      ExportProcedural(instance, false);
                    }
                 }
 
-                virtual AtNode* ExportInstance(AtNode *instance, const MDagPath& masterInstance)
+                virtual AtNode* ExportInstance(AtNode *instance, const MDagPath& masterInstance, bool update)
                 {
                    AtNode* masterNode = AiNodeLookUpByName(masterInstance.partialPathName().asChar());
 
@@ -87,7 +108,7 @@ class BB_gpuCacheTranslator : public CShapeTranslator
 //                       char nodeName[65535];
                        AiNodeSetStr(instance, "name", m_dagPath.partialPathName().asChar());
 
-                       ExportMatrix(instance, 0);
+                       ExportMatrix(instance);
 
                        AiNodeSetPtr(instance, "node", masterNode);
                        AiNodeSetBool(instance, "inherit_xform", false);
@@ -102,353 +123,360 @@ class BB_gpuCacheTranslator : public CShapeTranslator
                    return instance;
                 }
 
-                virtual void ExportProcedural( AtNode *node )
+                virtual void ExportProcedural( AtNode *node, bool update)
                 {
                         // do basic node export
-                        ExportMatrix( node, 0 );
+                        ExportMatrix( node );
 
                         // AiNodeSetPtr( node, "shader", arnoldShader(node) );
 
-
                         AiNodeSetInt( node, "visibility", ComputeVisibility() );
 
-                        MPlug plug = FindMayaObjectPlug( "receiveShadows" );
+                        MPlug plug = FindMayaPlug( "receiveShadows" );
                         if( !plug.isNull() )
                         {
                                 AiNodeSetBool( node, "receive_shadows", plug.asBool() );
                         }
 
-                        plug = FindMayaObjectPlug( "aiSelfShadows" );
+                        plug = FindMayaPlug( "aiSelfShadows" );
                         if( !plug.isNull() )
                         {
                                 AiNodeSetBool( node, "self_shadows", plug.asBool() );
                         }
 
-                        plug = FindMayaObjectPlug( "aiOpaque" );
+                        plug = FindMayaPlug( "aiOpaque" );
                         if( !plug.isNull() )
                         {
                                 AiNodeSetBool( node, "opaque", plug.asBool() );
                         }
 
+                        MStatus status;
+                        MFnDependencyNode dnode(m_dagPath.node(), &status);
+                        if (status)
+                            AiNodeSetInt(node, "id", DJB2Hash((unsigned char*)dnode.name().asChar()));
+
                         // now set the procedural-specific parameters
 
-                        AiNodeSetBool( node, "load_at_init", true ); // just for now so that it can load the shaders at the right time
+                        if (!update){                            
 
-                        MFnDagNode fnDagNode( m_dagPath );
-                        MBoundingBox bound = fnDagNode.boundingBox();
+                            AiNodeSetBool( node, "load_at_init", false ); // just for now so that it can load the shaders at the right time
 
-                        AiNodeSetPnt( node, "min", bound.min().x-m_dispPadding, bound.min().y-m_dispPadding, bound.min().z-m_dispPadding );
-                        AiNodeSetPnt( node, "max", bound.max().x+m_dispPadding, bound.max().y, bound.max().z+m_dispPadding );
+                            MFnDagNode fnDagNode( m_dagPath );
+                            MBoundingBox bound = fnDagNode.boundingBox();
 
-                        const char *dsoPath = getenv( "ALEMBIC_ARNOLD_PROCEDURAL_PATH" );
-                        AiNodeSetStr( node, "dso",  dsoPath ? dsoPath : "bb_AlembicArnoldProcedural.so" );
+                            AiNodeSetPnt( node, "min", bound.min().x-m_dispPadding, bound.min().y-m_dispPadding, bound.min().z-m_dispPadding );
+                            AiNodeSetPnt( node, "max", bound.max().x+m_dispPadding, bound.max().y, bound.max().z+m_dispPadding );
 
-                        // Set the parameters for the procedural
+                            const char *dsoPath = getenv( "ALEMBIC_ARNOLD_PROCEDURAL_PATH" );
+                            AiNodeSetStr( node, "dso",  dsoPath ? dsoPath : "bb_AlembicArnoldProcedural.so" );
 
-                        //abcFile path
-                        MString abcFile = fnDagNode.findPlug("cacheFileName").asString().expandEnvironmentVariablesAndTilde();
+                            // Set the parameters for the procedural
 
-                        //object path
-                        MString objectPath = fnDagNode.findPlug("cacheGeomPath").asString();
+                            //abcFile path
+                            MString abcFile = fnDagNode.findPlug("cacheFileName").asString().expandEnvironmentVariablesAndTilde();
 
-                        //object pattern
-                        MString objectPattern = "*";
+                            //object path
+                            MString objectPath = fnDagNode.findPlug("cacheGeomPath").asString();
 
-                        plug = FindMayaObjectPlug( "objectPattern" );
-                        if (!plug.isNull() )
-                        {
-                              if (plug.asString() != "")
-                              {
-                                objectPattern = plug.asString();
-                              }
-                        }
+                            //object pattern
+                            MString objectPattern = "*";
 
-                        //object pattern
-                        MString excludePattern = "";
+                            plug = FindMayaPlug( "objectPattern" );
+                            if (!plug.isNull() )
+                            {
+                                  if (plug.asString() != "")
+                                  {
+                                    objectPattern = plug.asString();
+                                  }
+                            }
 
-                        plug = FindMayaObjectPlug( "excludePattern" );
-                        if (!plug.isNull() )
-                        {
-                              if (plug.asString() != "")
-                              {
-                                excludePattern = plug.asString();
-                              }
-                        }
+                            //object pattern
+                            MString excludePattern = "";
 
-                        float shutterOpen = 0.0;
-                        plug = FindMayaObjectPlug( "shutterOpen" );
-                        if (!plug.isNull() )
-                        {
-                                shutterOpen = plug.asFloat();
-                        }
+                            plug = FindMayaPlug( "excludePattern" );
+                            if (!plug.isNull() )
+                            {
+                                  if (plug.asString() != "")
+                                  {
+                                    excludePattern = plug.asString();
+                                  }
+                            }
 
-                        float shutterClose = 0.0;
-                        plug = FindMayaObjectPlug( "shutterClose" );
-                        if (!plug.isNull() )
-                        {
-                                shutterClose = plug.asFloat();
-                        }
+                            float shutterOpen = 0.0;
+                            plug = FindMayaPlug( "shutterOpen" );
+                            if (!plug.isNull() )
+                            {
+                                    shutterOpen = plug.asFloat();
+                            }
 
-                        float timeOffset = 0.0;
-                        plug = FindMayaObjectPlug( "timeOffset" );
-                        if (!plug.isNull() )
-                        {
-                                timeOffset = plug.asFloat();
-                        }
+                            float shutterClose = 0.0;
+                            plug = FindMayaPlug( "shutterClose" );
+                            if (!plug.isNull() )
+                            {
+                                    shutterClose = plug.asFloat();
+                            }
 
-                        int subDIterations = 0;
-                        plug = FindMayaObjectPlug( "ai_subDIterations" );
-                        if (!plug.isNull() )
-                        {
-                                subDIterations = plug.asInt();
-                        }
+                            float timeOffset = 0.0;
+                            plug = FindMayaPlug( "timeOffset" );
+                            if (!plug.isNull() )
+                            {
+                                    timeOffset = plug.asFloat();
+                            }
 
-                        MString nameprefix = "";
-                        plug = FindMayaObjectPlug( "namePrefix" );
-                        if (!plug.isNull() )
-                        {
-                                nameprefix = plug.asString();
-                        }
+                            int subDIterations = 0;
+                            plug = FindMayaPlug( "ai_subDIterations" );
+                            if (!plug.isNull() )
+                            {
+                                    subDIterations = plug.asInt();
+                            }
 
-                        // bool exportFaceIds = fnDagNode.findPlug("exportFaceIds").asBool();
+                            MString nameprefix = "";
+                            plug = FindMayaPlug( "namePrefix" );
+                            if (!plug.isNull() )
+                            {
+                                    nameprefix = plug.asString();
+                            }
 
-                        bool makeInstance = true; // always on for now
-                        plug = FindMayaObjectPlug( "makeInstance" );
-                        if (!plug.isNull() )
-                        {
-                                makeInstance = plug.asBool();
-                        }
-                        
-                        bool flipv = false; 
-                        plug = FindMayaObjectPlug( "flipv" );
-                        if (!plug.isNull() )
-                        {
-                                flipv = plug.asBool();
-                        }
+                            // bool exportFaceIds = fnDagNode.findPlug("exportFaceIds").asBool();
 
-                        bool invertNormals = false; 
-                        plug = FindMayaObjectPlug( "invertNormals" );
-                        if (!plug.isNull() )
-                        {
-                                invertNormals = plug.asBool();
-                        }
-                        
-                        short i_subDUVSmoothing = 1;
-                        plug = FindMayaObjectPlug( "ai_subDUVSmoothing" );
-                        if (!plug.isNull() )
-                        {
-                                i_subDUVSmoothing = plug.asShort();
-                        }
+                            bool makeInstance = true; // always on for now
+                            plug = FindMayaPlug( "makeInstance" );
+                            if (!plug.isNull() )
+                            {
+                                    makeInstance = plug.asBool();
+                            }
+                            
+                            bool flipv = false; 
+                            plug = FindMayaPlug( "flipv" );
+                            if (!plug.isNull() )
+                            {
+                                    flipv = plug.asBool();
+                            }
 
-                        MString  subDUVSmoothing;
+                            bool invertNormals = false; 
+                            plug = FindMayaPlug( "invertNormals" );
+                            if (!plug.isNull() )
+                            {
+                                    invertNormals = plug.asBool();
+                            }
+                            
+                            short i_subDUVSmoothing = 1;
+                            plug = FindMayaPlug( "ai_subDUVSmoothing" );
+                            if (!plug.isNull() )
+                            {
+                                    i_subDUVSmoothing = plug.asShort();
+                            }
 
-                        switch (i_subDUVSmoothing)
-                        {
-                          case 0:
-                            subDUVSmoothing = "pin_corners";
-                            break;
-                          case 1:
-                            subDUVSmoothing = "pin_borders";
-                            break;
-                          case 2:
-                            subDUVSmoothing = "linear";
-                            break;
-                          case 3:
-                            subDUVSmoothing = "smooth";
-                            break;
-                          default :
-                            subDUVSmoothing = "pin_corners";
-                            break;
-                        }
+                            MString  subDUVSmoothing;
 
-                        MTime curTime = MAnimControl::currentTime();
-                        // fnDagNode.findPlug("time").getValue( frame );
+                            switch (i_subDUVSmoothing)
+                            {
+                              case 0:
+                                subDUVSmoothing = "pin_corners";
+                                break;
+                              case 1:
+                                subDUVSmoothing = "pin_borders";
+                                break;
+                              case 2:
+                                subDUVSmoothing = "linear";
+                                break;
+                              case 3:
+                                subDUVSmoothing = "smooth";
+                                break;
+                              default :
+                                subDUVSmoothing = "pin_corners";
+                                break;
+                            }
 
-                        // MTime frameOffset;
-                        // fnDagNode.findPlug("timeOffset").getValue( frameOffset );
+                            MTime curTime = MAnimControl::currentTime();
+                            // fnDagNode.findPlug("time").getValue( frame );
 
-                        float time = curTime.as(MTime::kFilm)+timeOffset;
+                            // MTime frameOffset;
+                            // fnDagNode.findPlug("timeOffset").getValue( frameOffset );
 
-                        MString argsString;
-                        if (objectPath != "|"){
-                                argsString += "-objectpath ";
-                                // convert "|" to "/"
+                            float time = curTime.as(MTime::kFilm)+timeOffset;
 
-                                argsString += MString(replace_all(objectPath,"|","/").c_str());
-                        }
-                        if (objectPattern != "*"){
-                                argsString += "-pattern ";
-                                argsString += objectPattern;
-                        }
-                        if (excludePattern != ""){
-                                argsString += "-excludepattern ";
-                                argsString += excludePattern;
-                        }
-                        if (shutterOpen != 0.0){
-                                argsString += " -shutteropen ";
-                                argsString += shutterOpen;
-                        }
-                        if (shutterClose != 0.0){
-                                argsString += " -shutterclose ";
-                                argsString += shutterClose;
-                        }
-                        if (subDIterations != 0){
-                                argsString += " -subditerations ";
-                                argsString += subDIterations;
-                                argsString += " -subduvsmoothing ";
-                                argsString += subDUVSmoothing;
-                        }
-                        if (makeInstance){
-                                argsString += " -makeinstance ";
-                        }
-                        if (nameprefix != ""){
-                                argsString += " -nameprefix ";
-                                argsString += nameprefix;
-                        }
-                        if (flipv){
-                                argsString += " -flipv ";
-                        }
-                        if (invertNormals){
-                                argsString += " -invertNormals ";
-                        }
-                        argsString += " -filename ";
-                        argsString += abcFile;
-                        argsString += " -frame ";
-                        argsString += time;
+                            MString argsString;
+                            if (objectPath != "|"){
+                                    argsString += "-objectpath ";
+                                    // convert "|" to "/"
 
-                        if (m_displaced){
+                                    argsString += MString(replace_all(objectPath,"|","/").c_str());
+                            }
+                            if (objectPattern != "*"){
+                                    argsString += "-pattern ";
+                                    argsString += objectPattern;
+                            }
+                            if (excludePattern != ""){
+                                    argsString += "-excludepattern ";
+                                    argsString += excludePattern;
+                            }
+                            if (shutterOpen != 0.0){
+                                    argsString += " -shutteropen ";
+                                    argsString += shutterOpen;
+                            }
+                            if (shutterClose != 0.0){
+                                    argsString += " -shutterclose ";
+                                    argsString += shutterClose;
+                            }
+                            if (subDIterations != 0){
+                                    argsString += " -subditerations ";
+                                    argsString += subDIterations;
+                                    argsString += " -subduvsmoothing ";
+                                    argsString += subDUVSmoothing;
+                            }
+                            if (makeInstance){
+                                    argsString += " -makeinstance ";
+                            }
+                            if (nameprefix != ""){
+                                    argsString += " -nameprefix ";
+                                    argsString += nameprefix;
+                            }
+                            if (flipv){
+                                    argsString += " -flipv ";
+                            }
+                            if (invertNormals){
+                                    argsString += " -invertNormals ";
+                            }
+                            argsString += " -filename ";
+                            argsString += abcFile;
+                            argsString += " -frame ";
+                            argsString += time;
 
-                            argsString += " -disp_map ";
-                            argsString += AiNodeGetName(m_dispNode);
+                            if (m_displaced){
 
-                        }
+                                argsString += " -disp_map ";
+                                argsString += AiNodeGetName(m_dispNode);
 
-                        AiNodeSetStr(node, "data", argsString.asChar());
+                            }
 
-                        ExportUserAttrs(node);
+                            AiNodeSetStr(node, "data", argsString.asChar());
 
-                        // Export light linking per instance
-                        ExportLightLinking(node);
+                            ExportUserAttrs(node);
 
+                            // Export light linking per instance
+                            ExportLightLinking(node);
+
+                        } 
                 }
 
                 virtual void ExportUserAttrs( AtNode *node )
                 {
                         // Get the optional attributes and export them as user vars
 
-                        MPlug plug = FindMayaObjectPlug( "shaderAssignation" );
+                        MPlug plug = FindMayaPlug( "shaderAssignation" );
                         if( !plug.isNull() )
                         {
                                 AiNodeDeclare( node, "shaderAssignation", "constant STRING" );
                                 AiNodeSetStr( node, "shaderAssignation", plug.asString().asChar() );
                         }
 
-                        plug = FindMayaObjectPlug( "displacementAssignation" );
+                        plug = FindMayaPlug( "displacementAssignation" );
                         if( !plug.isNull() )
                         {
                                 AiNodeDeclare( node, "displacementAssignation", "constant STRING" );
                                 AiNodeSetStr( node, "displacementAssignation", plug.asString().asChar() );
                         }
 
-                        plug = FindMayaObjectPlug( "shaderAssignmentfile" );
+                        plug = FindMayaPlug( "shaderAssignmentfile" );
                         if( !plug.isNull() )
                         {
                                 AiNodeDeclare( node, "shaderAssignmentfile", "constant STRING" );
                                 AiNodeSetStr( node, "shaderAssignmentfile", plug.asString().asChar() );
                         }
 
-                        plug = FindMayaObjectPlug( "overrides" );
+                        plug = FindMayaPlug( "overrides" );
                         if( !plug.isNull() )
                         {
                                 AiNodeDeclare( node, "overrides", "constant STRING" );
                                 AiNodeSetStr( node, "overrides", plug.asString().asChar() );
                         }
 
-                        plug = FindMayaObjectPlug( "overridefile" );
+                        plug = FindMayaPlug( "overridefile" );
                         if( !plug.isNull() )
                         {
                                 AiNodeDeclare( node, "overridefile", "constant STRING" );
                                 AiNodeSetStr( node, "overridefile", plug.asString().asChar() );
                         }
 
-                        plug = FindMayaObjectPlug( "userAttributes" );
+                        plug = FindMayaPlug( "userAttributes" );
                         if( !plug.isNull() )
                         {
                                 AiNodeDeclare( node, "userAttributes", "constant STRING" );
                                 AiNodeSetStr( node, "userAttributes", plug.asString().asChar() );
                         }
 
-                        plug = FindMayaObjectPlug( "userAttributesfile" );
+                        plug = FindMayaPlug( "userAttributesfile" );
                         if( !plug.isNull() )
                         {
                                 AiNodeDeclare( node, "userAttributesfile", "constant STRING" );
                                 AiNodeSetStr( node, "userAttributesfile", plug.asString().asChar() );
                         }
 
-                        plug = FindMayaObjectPlug( "skipJson" );
+                        plug = FindMayaPlug( "skipJson" );
                         if( !plug.isNull() )
                         {
                                 AiNodeDeclare( node, "skipJson", "constant BOOL" );   
                                 AiNodeSetBool( node, "skipJson", plug.asBool() );
                         }
 
-                        plug = FindMayaObjectPlug( "skipShaders" );
+                        plug = FindMayaPlug( "skipShaders" );
                         if( !plug.isNull() )
                         {
                                 AiNodeDeclare( node, "skipShaders", "constant BOOL" );   
                                 AiNodeSetBool( node, "skipShaders", plug.asBool() );
                         }
 
-                        plug = FindMayaObjectPlug( "skipOverrides" );
+                        plug = FindMayaPlug( "skipOverrides" );
                         if( !plug.isNull() )
                         {
                                 AiNodeDeclare( node, "skipOverrides", "constant BOOL" );   
                                 AiNodeSetBool( node, "skipOverrides", plug.asBool() );
                         }
 
-                        plug = FindMayaObjectPlug( "skipUserAttributes" );
+                        plug = FindMayaPlug( "skipUserAttributes" );
                         if( !plug.isNull() )
                         {
                                 AiNodeDeclare( node, "skipUserAttributes", "constant BOOL" );   
                                 AiNodeSetBool( node, "skipUserAttributes", plug.asBool() );
                         }
 
-                        plug = FindMayaObjectPlug( "skipDisplacements" );
+                        plug = FindMayaPlug( "skipDisplacements" );
                         if( !plug.isNull() )
                         {
                                 AiNodeDeclare( node, "skipDisplacements", "constant BOOL" );                          
                                 AiNodeSetBool( node, "skipDisplacements", plug.asBool() );
                         }
 
-                        plug = FindMayaObjectPlug( "objectPattern" );
+                        plug = FindMayaPlug( "objectPattern" );
                         if( !plug.isNull() )
                         {
                                 AiNodeDeclare( node, "objectPattern", "constant STRING" );
                                 AiNodeSetStr( node, "objectPattern", plug.asString().asChar() );
                         }                       
                         
-                        plug = FindMayaObjectPlug( "assShaders" );
+                        plug = FindMayaPlug( "assShaders" );
                         if( !plug.isNull() )
                         {
                                 AiNodeDeclare( node, "assShaders", "constant STRING" );
                                 AiNodeSetStr( node, "assShaders", plug.asString().asChar() );
                         }
 
-                        plug = FindMayaObjectPlug( "radiusPoint" );
+                        plug = FindMayaPlug( "radiusPoint" );
                         if( !plug.isNull() )
                         {
                                 AiNodeDeclare( node, "radiusPoint", "constant FLOAT" );
                                 AiNodeSetFlt( node, "radiusPoint", plug.asFloat() );
                         }
 
-                        plug = FindMayaObjectPlug( "radiusCurve" );
+                        plug = FindMayaPlug( "radiusCurve" );
                         if( !plug.isNull() )
                         {
                                 AiNodeDeclare( node, "radiusCurve", "constant FLOAT" );
                                 AiNodeSetFlt( node, "radiusCurve", plug.asFloat() );
                         }
 
-                        plug = FindMayaObjectPlug( "modeCurve" );
+                        plug = FindMayaPlug( "modeCurve" );
                         if( !plug.isNull() )
                         {
                                 AiNodeDeclare( node, "modeCurve", "constant STRING" );
@@ -463,7 +491,7 @@ class BB_gpuCacheTranslator : public CShapeTranslator
                                    AiNodeSetStr(node, "modeCurve", "ribbon");                               
                         }
 
-                        plug = FindMayaObjectPlug( "scaleVelocity" );
+                        plug = FindMayaPlug( "scaleVelocity" );
                         if( !plug.isNull() )
                         {
                                 AiNodeDeclare( node, "scaleVelocity", "constant FLOAT" );
@@ -478,14 +506,14 @@ class BB_gpuCacheTranslator : public CShapeTranslator
                         return IsMotionBlurEnabled( MTOA_MBLUR_OBJECT ) && IsLocalMotionBlurEnabled();
                 }
 
-                virtual void ExportMotion( AtNode *node, unsigned int step )
+                virtual void ExportMotion( AtNode *node )
                 {
                         if( !IsMotionBlurEnabled() )
                         {
                                 return;
                         }
 
-                        ExportMatrix( node, step );
+                        ExportMatrix( node );
                 }
 
                 static void nodeInitialiser( CAbTranslator context )
@@ -712,7 +740,7 @@ class BB_gpuCacheTranslator : public CShapeTranslator
                      MObject dispNode = connections[0].node();
                      GetDisplacement(dispNode, maximumDisplacementPadding, enableAutoBump);
                      m_dispPadding = maximumDisplacementPadding;
-                     AtNode* dispImage(ExportNode(connections[0]));
+                     AtNode* dispImage(ExportConnectedNode(connections[0]));
 
                      m_dispNode = dispImage;
                   }
@@ -727,7 +755,7 @@ class BB_gpuCacheTranslator : public CShapeTranslator
                   }
 
                   // return the exported surface shader
-                  return ExportNode( shadingGroupPlug );
+                  return ExportConnectedNode( shadingGroupPlug );
                 }
 
         protected :
