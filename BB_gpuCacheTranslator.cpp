@@ -59,6 +59,7 @@ class BB_gpuCacheTranslator : public CShapeTranslator
 
                 virtual AtNode *CreateArnoldNodes()
                 {
+                  AiMsgDebug("[BB_gpuCacheTranslator] CreateArnoldNodes()");
                   m_isMasterDag =  IsMasterInstance();
                   m_masterDag = GetMasterInstance();
                   if (m_isMasterDag)
@@ -71,6 +72,13 @@ class BB_gpuCacheTranslator : public CShapeTranslator
                   }
                 }
 
+                void Delete()
+                {
+                   // If the procedural has been expanded at export,
+                   // we need to delete all the created nodes here
+                   AiMsgDebug("[BB_gpuCacheTranslator] Delete()");
+                   CShapeTranslator::Delete();
+                }
 
                 virtual void RequestUpdate()
                 {
@@ -78,20 +86,26 @@ class BB_gpuCacheTranslator : public CShapeTranslator
                     CShapeTranslator::RequestUpdate();
                 }
 
-
-
                 virtual void Export( AtNode* instance )
                 {
-                   const char* nodeType = AiNodeEntryGetName(AiNodeGetNodeEntry(instance));
-                   if (strcmp(nodeType, "ginstance") == 0)
-                   {
-                      ExportInstance(instance, m_masterDag, false);
-                   }
-                   else
-                   {
+                    if (IsExported())
+                    {
+                        // Since we always use AI_RECREATE_NODE during IPR (see RequestUpdate)
+                        // we should never get here. Early out for safety
+                        return;
+                    }
+                    AiMsgDebug("[BB_gpuCacheTranslator] Export()");
 
-                      ExportProcedural(instance, false);
-                   }
+                    const char* nodeType = AiNodeEntryGetName(AiNodeGetNodeEntry(instance));
+                    if (strcmp(nodeType, "ginstance") == 0)
+                    {
+                        ExportInstance(instance, m_masterDag, false);
+                    }
+                    else
+                    {
+ 
+                        ExportProcedural(instance, false);
+                    }
                 }
 
                 virtual AtNode* ExportInstance(AtNode *instance, const MDagPath& masterInstance, bool update)
@@ -105,7 +119,6 @@ class BB_gpuCacheTranslator : public CShapeTranslator
                      {
                        std::cout << "ExportInstance::instanceNum :: " << instanceNum << std::endl;
 
-//                       char nodeName[65535];
                        AiNodeSetStr(instance, "name", m_dagPath.partialPathName().asChar());
 
                        ExportMatrix(instance);
@@ -125,6 +138,7 @@ class BB_gpuCacheTranslator : public CShapeTranslator
 
                 virtual void ExportProcedural( AtNode *node, bool update)
                 {
+                        AiMsgDebug("[BB_gpuCacheTranslator] ExportProcedural()");
                         // do basic node export
                         ExportMatrix( node );
 
@@ -159,7 +173,7 @@ class BB_gpuCacheTranslator : public CShapeTranslator
 
                         if (!update){                            
 
-                            AiNodeSetBool( node, "load_at_init", false ); // just for now so that it can load the shaders at the right time
+                            AiNodeSetBool( node, "load_at_init", true ); // just for now so that it can load the shaders at the right time
 
                             MFnDagNode fnDagNode( m_dagPath );
                             MBoundingBox bound = fnDagNode.boundingBox();
@@ -239,7 +253,7 @@ class BB_gpuCacheTranslator : public CShapeTranslator
 
                             // bool exportFaceIds = fnDagNode.findPlug("exportFaceIds").asBool();
 
-                            bool makeInstance = true; // always on for now
+                            bool makeInstance = false; // always on for now
                             plug = FindMayaPlug( "makeInstance" );
                             if (!plug.isNull() )
                             {
@@ -353,6 +367,9 @@ class BB_gpuCacheTranslator : public CShapeTranslator
                             AiNodeSetStr(node, "data", argsString.asChar());
 
                             ExportUserAttrs(node);
+
+                            // export curve attributes
+                            ExportCurveAttrs(node);
 
                             // Export light linking per instance
                             ExportLightLinking(node);
@@ -469,7 +486,19 @@ class BB_gpuCacheTranslator : public CShapeTranslator
                                 AiNodeSetFlt( node, "radiusPoint", plug.asFloat() );
                         }
 
-                        plug = FindMayaPlug( "radiusCurve" );
+
+                        plug = FindMayaPlug( "scaleVelocity" );
+                        if( !plug.isNull() )
+                        {
+                                AiNodeDeclare( node, "scaleVelocity", "constant FLOAT" );
+                                AiNodeSetFlt( node, "scaleVelocity", plug.asFloat() );
+                        }
+
+                }
+
+                virtual void ExportCurveAttrs( AtNode *node )
+                {
+                        MPlug plug = FindMayaPlug( "radiusCurve" );
                         if( !plug.isNull() )
                         {
                                 AiNodeDeclare( node, "radiusCurve", "constant FLOAT" );
@@ -490,16 +519,7 @@ class BB_gpuCacheTranslator : public CShapeTranslator
                                 else
                                    AiNodeSetStr(node, "modeCurve", "ribbon");                               
                         }
-
-                        plug = FindMayaPlug( "scaleVelocity" );
-                        if( !plug.isNull() )
-                        {
-                                AiNodeDeclare( node, "scaleVelocity", "constant FLOAT" );
-                                AiNodeSetFlt( node, "scaleVelocity", plug.asFloat() );
-                        }
-
                 }
-
 
                 virtual bool RequiresMotionData()
                 {
@@ -668,10 +688,15 @@ class BB_gpuCacheTranslator : public CShapeTranslator
                         data.type = AI_TYPE_FLOAT;
                         helper.MakeInputFloat(data);     
                         
-                        data.defaultValue.FLT = 0.1f;
+                        // radiusCurve, this can be textured to give varying width along the curve
+                        data.defaultValue.FLT = 0.01f;
                         data.name = "radiusCurve";
                         data.shortName = "radius_curve";
                         data.type = AI_TYPE_FLOAT;
+                        data.hasMin = true;
+                        data.min.FLT = 0.0f;
+                        data.hasSoftMax = true;
+                        data.softMax.FLT = 1.0f;
                         helper.MakeInputFloat(data); 
 
                         data.name = "modeCurve";
