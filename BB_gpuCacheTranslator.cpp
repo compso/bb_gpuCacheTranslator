@@ -574,7 +574,7 @@ class BB_gpuCacheTranslator : public CShapeTranslator
                         data.type = AI_TYPE_STRING;
                         helper.MakeInput(data);                        
 
-                        data.defaultValue.BOOL = true;
+                        data.defaultValue.BOOL = false;
                         data.name = "makeInstance";
                         data.shortName = "make_instance";
                         data.type = AI_TYPE_BOOLEAN;
@@ -712,8 +712,13 @@ class BB_gpuCacheTranslator : public CShapeTranslator
                         data.shortName = "scale_velocity";
                         data.type = AI_TYPE_FLOAT;
                         helper.MakeInputFloat(data);  
-
-                }
+                
+                        data.defaultValue.FLT = 0.0f;
+                        data.name = "timeOffset";
+                        data.shortName = "time_offset";
+                        data.type = AI_TYPE_FLOAT;
+                        helper.MakeInputFloat(data);  
+                    }
 
                 static void *creator()
                 {
