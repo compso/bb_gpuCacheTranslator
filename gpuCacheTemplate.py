@@ -7,8 +7,9 @@ import mtoa.callbacks as callbacks
 import mtoa.core as core
 import re
 
+
 def LoadGpuCacheButtonPush(nodeName):
-    AttrName = nodeName.split('.')[-1]        
+    AttrName = nodeName.split('.')[-1]
     basicFilter = 'JSON ASCII (*.json)'
     caption = 'Load JSON File'
 
@@ -16,40 +17,55 @@ def LoadGpuCacheButtonPush(nodeName):
         basicFilter = 'Arnold Archive (*.ass *.ass.gz)'
         caption = 'Load ASS File'
 
-    projectDir = cmds.workspace(query=True, directory=True)     
-    ret = cmds.fileDialog2(fileFilter=basicFilter, cap=caption,okc='Load',fm=1, startingDirectory=projectDir)
+    projectDir = cmds.workspace(query=True, directory=True)
+    ret = cmds.fileDialog2(fileFilter=basicFilter,
+                           cap=caption,
+                           okc='Load',
+                           fm=1,
+                           startingDirectory=projectDir)
     if ret is not None and len(ret):
         ArnoldGpuCacheEdit(nodeName, ret[0], True)
 
-def ArnoldGpuCacheEdit(nodeName, mPath, replace=False) :
-    AttrName = nodeName.split('.')[-1]        
-    cmds.setAttr(nodeName,mPath,type='string')
-    cmds.textField('GpuCache%sPath'%AttrName, edit=True, text=mPath)
 
-def ArnoldGpuCacheTemplateNew(plugName) :
+def ArnoldGpuCacheEdit(nodeName, mPath, replace=False):
+    AttrName = nodeName.split('.')[-1]
+    cmds.setAttr(nodeName, mPath, type='string')
+    cmds.textField('GpuCache{}Path'.format(AttrName, edit=True, text=mPath))
+
+
+def ArnoldGpuCacheTemplateNew(plugName):
     AttrName = plugName.split('.')[-1]
     s1 = re.sub('(.)([A-Z][a-z]+)', r'\1 \2', AttrName)
     s2 = re.sub('(.)(file+)', r'\1 \2', s1)
     NiceName = re.sub('([a-z0-9])([A-Z])', r'\1 \2', s2).title()
 
-    cmds.setUITemplate('attributeEditorTemplate',pst=True)
-    cmds.rowLayout( numberOfColumns=3 )
+    cmds.setUITemplate('attributeEditorTemplate', pst=True)
+    cmds.rowLayout(numberOfColumns=3)
     cmds.text(label=NiceName)
-    path = cmds.textField('GpuCache%sPath'%AttrName) # ,changeCommand=lambda *args: ArnoldGpuCacheEdit(plugName, *args)
-    cmds.symbolButton('GpuCache%sPathButton'%AttrName, image='navButtonBrowse.png')
+    cmds.textField('GpuCache{}Path'.format(AttrName))
+    cmds.symbolButton('GpuCache{}PathButton'.format(AttrName), image='navButtonBrowse.png')
     cmds.setUITemplate(ppt=True)
 
     ArnoldGpuCacheTemplateReplace(plugName)
 
     
-def ArnoldGpuCacheTemplateReplace(plugName) :
+def ArnoldGpuCacheTemplateReplace(plugName):
     AttrName = plugName.split('.')[-1]
-    cmds.connectControl('GpuCache%sPath'%AttrName,plugName,fileName=True )
+    cmds.connectControl('GpuCache{}Path'.format(AttrName), plugName, fileName=True)
 
-    cmds.textField( 'GpuCache%sPath'%AttrName, edit=True, changeCommand=lambda *args: ArnoldGpuCacheEdit(plugName, *args))
-    cmds.textField( 'GpuCache%sPath'%AttrName, edit=True, text=cmds.getAttr(plugName) )
+    cmds.textField(
+        'GpuCache{}Path'.format(AttrName),
+        edit=True,
+        changeCommand=lambda *args: ArnoldGpuCacheEdit(plugName, *args))
+    cmds.textField(
+        'GpuCache{}Path'.format(AttrName),
+        edit=True,
+        text=cmds.getAttr(plugName))
     
-    cmds.symbolButton('GpuCache%sPathButton'%AttrName, edit=True, command=lambda *args: LoadGpuCacheButtonPush(plugName))
+    cmds.symbolButton(
+        'GpuCache{}PathButton'.format(AttrName),
+        edit=True,
+        command=lambda *args: LoadGpuCacheButtonPush(plugName))
 
 
 class GpuCacheTemplate(templates.ShapeTranslatorTemplate):
@@ -72,9 +88,18 @@ class GpuCacheTemplate(templates.ShapeTranslatorTemplate):
         self.endLayout()
 
         self.beginLayout('JSON Files', collapse=False)
-        self.addCustom('shaderAssignmentfile', ArnoldGpuCacheTemplateNew, ArnoldGpuCacheTemplateReplace)
-        self.addCustom('overridefile', ArnoldGpuCacheTemplateNew, ArnoldGpuCacheTemplateReplace)
-        self.addCustom('userAttributesfile', ArnoldGpuCacheTemplateNew, ArnoldGpuCacheTemplateReplace)
+        self.addCustom(
+            'shaderAssignmentfile',
+            ArnoldGpuCacheTemplateNew,
+            ArnoldGpuCacheTemplateReplace)
+        self.addCustom(
+            'overridefile',
+            ArnoldGpuCacheTemplateNew,
+            ArnoldGpuCacheTemplateReplace)
+        self.addCustom(
+            'userAttributesfile',
+            ArnoldGpuCacheTemplateNew,
+            ArnoldGpuCacheTemplateReplace)
         self.endLayout()
         
         self.beginLayout('Skip Options', collapse=False)
@@ -85,7 +110,7 @@ class GpuCacheTemplate(templates.ShapeTranslatorTemplate):
         self.addControl('skipUserAttributes', label='Skip User Attributes')
         self.endLayout()
 
-        self.addSeparator()        
+        self.addSeparator()
 
         self.beginLayout('Points', collapse=False)
         self.addControl('radiusPoint', label='Point Radius')
