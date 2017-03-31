@@ -701,6 +701,18 @@ class BB_gpuCacheTranslator : public CShapeTranslator
                         data.shortName = "radius_point";
                         data.type = AI_TYPE_FLOAT;
                         helper.MakeInputFloat(data);     
+                
+                        data.defaultValue.FLT = 0.0f;
+                        data.name = "timeOffset";
+                        data.shortName = "time_offset";
+                        data.type = AI_TYPE_FLOAT;
+                        helper.MakeInputFloat(data);
+
+                        data.defaultValue.FLT = 0.0f;
+                        data.name = "frame";
+                        data.shortName = "frame";
+                        data.type = AI_TYPE_FLOAT;
+                        helper.MakeInputFloat(data);  
                         
                         // radiusCurve, this can be textured to give varying width along the curve
                         data.defaultValue.FLT = 0.01f;
@@ -724,18 +736,6 @@ class BB_gpuCacheTranslator : public CShapeTranslator
                         data.defaultValue.FLT = 1.0f;
                         data.name = "scaleVelocity";
                         data.shortName = "scale_velocity";
-                        data.type = AI_TYPE_FLOAT;
-                        helper.MakeInputFloat(data);  
-                
-                        data.defaultValue.FLT = 0.0f;
-                        data.name = "timeOffset";
-                        data.shortName = "time_offset";
-                        data.type = AI_TYPE_FLOAT;
-                        helper.MakeInputFloat(data);
-
-                        data.defaultValue.FLT = 0.0f;
-                        data.name = "frame";
-                        data.shortName = "frame";
                         data.type = AI_TYPE_FLOAT;
                         helper.MakeInputFloat(data);  
 

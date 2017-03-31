@@ -77,6 +77,7 @@ class GpuCacheTemplate(templates.ShapeTranslatorTemplate):
         
         self.addControl('loadAtInit', label='Load at Initalisation')
         self.addControl('frame', label='Frame')
+        self.addControl('timeOffset', label='Frame Offset')
         self.addControl('objectPattern', label='Object Pattern')
         self.addControl('excludePattern', label='Exclude Pattern')
         self.addControl('namePrefix', label='Name Prefix')
