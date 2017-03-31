@@ -30,7 +30,7 @@ def LoadGpuCacheButtonPush(nodeName):
 def ArnoldGpuCacheEdit(nodeName, mPath, replace=False):
     AttrName = nodeName.split('.')[-1]
     cmds.setAttr(nodeName, mPath, type='string')
-    cmds.textField('GpuCache{}Path'.format(AttrName, edit=True, text=mPath))
+    cmds.textField('GpuCache{}Path'.format(AttrName), edit=True, text=mPath)
 
 
 def ArnoldGpuCacheTemplateNew(plugName):
@@ -75,6 +75,8 @@ class GpuCacheTemplate(templates.ShapeTranslatorTemplate):
         
         self.addSeparator()
         
+        self.addControl('loadAtInit', label='Load at Initalisation')
+        self.addControl('frame', label='Frame')
         self.addControl('objectPattern', label='Object Pattern')
         self.addControl('excludePattern', label='Exclude Pattern')
         self.addControl('namePrefix', label='Name Prefix')

@@ -173,8 +173,6 @@ class BB_gpuCacheTranslator : public CShapeTranslator
 
                         if (!update){                            
 
-                            AiNodeSetBool( node, "load_at_init", true ); // just for now so that it can load the shaders at the right time
-
                             MFnDagNode fnDagNode( m_dagPath );
                             MBoundingBox bound = fnDagNode.boundingBox();
 
@@ -237,6 +235,13 @@ class BB_gpuCacheTranslator : public CShapeTranslator
                                     timeOffset = plug.asFloat();
                             }
 
+                            float frame = 0.0;
+                            plug = FindMayaPlug( "frame" );
+                            if (!plug.isNull() )
+                            {
+                                    frame = plug.asFloat();
+                            }
+
                             int subDIterations = 0;
                             plug = FindMayaPlug( "ai_subDIterations" );
                             if (!plug.isNull() )
@@ -253,11 +258,18 @@ class BB_gpuCacheTranslator : public CShapeTranslator
 
                             // bool exportFaceIds = fnDagNode.findPlug("exportFaceIds").asBool();
 
-                            bool makeInstance = false; // always on for now
+                            bool makeInstance = false; 
                             plug = FindMayaPlug( "makeInstance" );
                             if (!plug.isNull() )
                             {
                                     makeInstance = plug.asBool();
+                            }
+
+                            bool loadAtInit = true; 
+                            plug = FindMayaPlug( "loadAtInit" );
+                            if (!plug.isNull() )
+                            {
+                                    loadAtInit = plug.asBool();
                             }
                             
                             bool flipv = false; 
@@ -302,13 +314,14 @@ class BB_gpuCacheTranslator : public CShapeTranslator
                                 break;
                             }
 
-                            MTime curTime = MAnimControl::currentTime();
+                            // MTime curTime = MAnimControl::currentTime();
                             // fnDagNode.findPlug("time").getValue( frame );
 
                             // MTime frameOffset;
                             // fnDagNode.findPlug("timeOffset").getValue( frameOffset );
 
-                            float time = curTime.as(MTime::kFilm)+timeOffset;
+                            // float time = curTime.as(MTime::kFilm)+timeOffset;
+                            float time = frame+timeOffset;
 
                             MString argsString;
                             if (objectPath != "|"){
@@ -365,6 +378,7 @@ class BB_gpuCacheTranslator : public CShapeTranslator
                             }
 
                             AiNodeSetStr(node, "data", argsString.asChar());
+                            AiNodeSetBool( node, "load_at_init", loadAtInit ); 
 
                             ExportUserAttrs(node);
 
@@ -717,7 +731,19 @@ class BB_gpuCacheTranslator : public CShapeTranslator
                         data.name = "timeOffset";
                         data.shortName = "time_offset";
                         data.type = AI_TYPE_FLOAT;
+                        helper.MakeInputFloat(data);
+
+                        data.defaultValue.FLT = 0.0f;
+                        data.name = "frame";
+                        data.shortName = "frame";
+                        data.type = AI_TYPE_FLOAT;
                         helper.MakeInputFloat(data);  
+
+                        data.defaultValue.BOOL = true;
+                        data.name = "loadAtInit";
+                        data.shortName = "load_at_init";
+                        data.type = AI_TYPE_BOOLEAN;
+                        helper.MakeInputBoolean(data);      
                     }
 
                 static void *creator()
