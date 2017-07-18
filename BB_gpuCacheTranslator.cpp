@@ -829,7 +829,7 @@ extern "C"
 
 DLLEXPORT void initializeExtension( CExtension &extension )
 {
-    const char * pluginVersion = "1.3.0";
+    const char * pluginVersion = "1.3.1";
 
     MString info = "MTOA gpuCache Translator v";
     info += pluginVersion;
