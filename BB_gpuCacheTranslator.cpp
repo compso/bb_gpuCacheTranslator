@@ -325,17 +325,17 @@ class BB_gpuCacheTranslator : public CShapeTranslator
 
                             MString argsString;
                             if (objectPath != "|"){
-                                    argsString += "-objectpath ";
+                                    argsString += " -objectpath ";
                                     // convert "|" to "/"
 
                                     argsString += MString(replace_all(objectPath,"|","/").c_str());
                             }
                             if (objectPattern != "*"){
-                                    argsString += "-pattern ";
+                                    argsString += " -pattern ";
                                     argsString += objectPattern;
                             }
                             if (excludePattern != ""){
-                                    argsString += "-excludepattern ";
+                                    argsString += " -excludepattern ";
                                     argsString += excludePattern;
                             }
                             if (shutterOpen != 0.0){
@@ -829,7 +829,7 @@ extern "C"
 
 DLLEXPORT void initializeExtension( CExtension &extension )
 {
-    const char * pluginVersion = "1.3.0";
+    const char * pluginVersion = "1.3.1";
 
     MString info = "MTOA gpuCache Translator v";
     info += pluginVersion;
