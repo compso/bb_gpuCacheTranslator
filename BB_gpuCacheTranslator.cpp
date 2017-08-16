@@ -10,6 +10,7 @@
 #include <maya/MBoundingBox.h>
 #include <maya/MPlugArray.h>
 
+#include <ai.h>
 #include <extension/Extension.h>
 #include <translators/shape/ShapeTranslator.h>
 
@@ -64,7 +65,7 @@ class BB_gpuCacheTranslator : public CShapeTranslator
                   m_masterDag = GetMasterInstance();
                   if (m_isMasterDag)
                   {
-                      return AddArnoldNode( "procedural" );
+                      return AddArnoldNode( "alembic_loader" );
                   }
                   else
                   {
@@ -176,11 +177,11 @@ class BB_gpuCacheTranslator : public CShapeTranslator
                             MFnDagNode fnDagNode( m_dagPath );
                             MBoundingBox bound = fnDagNode.boundingBox();
 
-                            AiNodeSetPnt( node, "min", bound.min().x-m_dispPadding, bound.min().y-m_dispPadding, bound.min().z-m_dispPadding );
-                            AiNodeSetPnt( node, "max", bound.max().x+m_dispPadding, bound.max().y, bound.max().z+m_dispPadding );
+                            AiNodeSetVec( node, "min", bound.min().x-m_dispPadding, bound.min().y-m_dispPadding, bound.min().z-m_dispPadding );
+                            AiNodeSetVec( node, "max", bound.max().x+m_dispPadding, bound.max().y, bound.max().z+m_dispPadding );
 
-                            const char *dsoPath = getenv( "ALEMBIC_ARNOLD_PROCEDURAL_PATH" );
-                            AiNodeSetStr( node, "dso",  dsoPath ? dsoPath : "bb_AlembicArnoldProcedural.so" );
+                            // const char *dsoPath = getenv( "ALEMBIC_ARNOLD_PROCEDURAL_PATH" );
+                            // AiNodeSetStr( node, "filename",  dsoPath ? dsoPath : "bb_AlembicArnoldProcedural.so" );
 
                             // Set the parameters for the procedural
 
@@ -265,12 +266,12 @@ class BB_gpuCacheTranslator : public CShapeTranslator
                                     makeInstance = plug.asBool();
                             }
 
-                            bool loadAtInit = true; 
-                            plug = FindMayaPlug( "loadAtInit" );
-                            if (!plug.isNull() )
-                            {
-                                    loadAtInit = plug.asBool();
-                            }
+                            // bool loadAtInit = true; 
+                            // plug = FindMayaPlug( "loadAtInit" );
+                            // if (!plug.isNull() )
+                            // {
+                            //         loadAtInit = plug.asBool();
+                            // }
                             
                             bool flipv = false; 
                             plug = FindMayaPlug( "flipv" );
@@ -378,7 +379,7 @@ class BB_gpuCacheTranslator : public CShapeTranslator
                             }
 
                             AiNodeSetStr(node, "data", argsString.asChar());
-                            AiNodeSetBool( node, "load_at_init", loadAtInit ); 
+                            // AiNodeSetBool( node, "load_at_init", loadAtInit ); 
 
                             ExportUserAttrs(node);
 
@@ -552,7 +553,7 @@ class BB_gpuCacheTranslator : public CShapeTranslator
 
                 static void nodeInitialiser( CAbTranslator context )
                 {
-                        CExtensionAttrHelper helper( context.maya, "procedural" );
+                        CExtensionAttrHelper helper( context.maya, "alembic_loader" );
 
                         // make the attributes 
                         CAttrData data;
@@ -588,19 +589,19 @@ class BB_gpuCacheTranslator : public CShapeTranslator
                         data.type = AI_TYPE_STRING;
                         helper.MakeInput(data);                        
 
-                        data.defaultValue.BOOL = false;
                         data.name = "makeInstance";
                         data.shortName = "make_instance";
                         data.type = AI_TYPE_BOOLEAN;
+                        data.defaultValue.BOOL() = false;
                         helper.MakeInputBoolean(data);
 
-                        data.defaultValue.BOOL = false;
+                        data.defaultValue.BOOL() = false;
                         data.name = "flipv";
                         data.shortName = "flip_v";
                         data.type = AI_TYPE_BOOLEAN;
                         helper.MakeInputBoolean(data);
 
-                        data.defaultValue.BOOL = false;
+                        data.defaultValue.BOOL() = false;
                         data.name = "invertNormals";
                         data.shortName = "invert_normals";
                         data.type = AI_TYPE_BOOLEAN;
@@ -649,35 +650,35 @@ class BB_gpuCacheTranslator : public CShapeTranslator
                         helper.MakeInput(data);     
 
 
-                        data.defaultValue.BOOL = false;
+                        data.defaultValue.BOOL() = false;
                         data.name = "skipJson";
                         data.shortName = "skip_json";
                         data.type = AI_TYPE_BOOLEAN;
                         helper.MakeInputBoolean(data);
                         
 
-                        data.defaultValue.BOOL = false;
+                        data.defaultValue.BOOL() = false;
                         data.name = "skipShaders";
                         data.shortName = "skip_shaders";
                         data.type = AI_TYPE_BOOLEAN;
                         helper.MakeInputBoolean(data);
                         
 
-                        data.defaultValue.BOOL = false;
+                        data.defaultValue.BOOL() = false;
                         data.name = "skipOverrides";
                         data.shortName = "skip_overrides";
                         data.type = AI_TYPE_BOOLEAN;
                         helper.MakeInputBoolean(data);
                         
 
-                        data.defaultValue.BOOL = false;
+                        data.defaultValue.BOOL() = false;
                         data.name = "skipUserAttributes";
                         data.shortName = "skip_user_attributes";
                         data.type = AI_TYPE_BOOLEAN;
                         helper.MakeInputBoolean(data);
                         
 
-                        data.defaultValue.BOOL = false;
+                        data.defaultValue.BOOL() = false;
                         data.name = "skipDisplacements";
                         data.shortName = "skip_displacements";
                         data.type = AI_TYPE_BOOLEAN;
@@ -696,33 +697,33 @@ class BB_gpuCacheTranslator : public CShapeTranslator
                         data.type = AI_TYPE_STRING;
                         helper.MakeInput(data);   
 
-                        data.defaultValue.FLT = 0.1f;
+                        data.defaultValue.FLT() = 0.1f;
                         data.name = "radiusPoint";
                         data.shortName = "radius_point";
                         data.type = AI_TYPE_FLOAT;
                         helper.MakeInputFloat(data);     
                 
-                        data.defaultValue.FLT = 0.0f;
+                        data.defaultValue.FLT() = 0.0f;
                         data.name = "timeOffset";
                         data.shortName = "time_offset";
                         data.type = AI_TYPE_FLOAT;
                         helper.MakeInputFloat(data);
 
-                        data.defaultValue.FLT = 0.0f;
+                        data.defaultValue.FLT() = 0.0f;
                         data.name = "frame";
                         data.shortName = "frame";
                         data.type = AI_TYPE_FLOAT;
                         helper.MakeInputFloat(data);  
                         
                         // radiusCurve, this can be textured to give varying width along the curve
-                        data.defaultValue.FLT = 0.01f;
+                        data.defaultValue.FLT() = 0.01f;
                         data.name = "radiusCurve";
                         data.shortName = "radius_curve";
                         data.type = AI_TYPE_FLOAT;
                         data.hasMin = true;
-                        data.min.FLT = 0.0f;
+                        data.min.FLT() = 0.0f;
                         data.hasSoftMax = true;
-                        data.softMax.FLT = 1.0f;
+                        data.softMax.FLT() = 1.0f;
                         helper.MakeInputFloat(data); 
 
                         data.name = "modeCurve";
@@ -730,16 +731,16 @@ class BB_gpuCacheTranslator : public CShapeTranslator
                         data.enums.append("ribbon");
                         data.enums.append("thick");
                         data.enums.append("oriented");
-                        data.defaultValue.INT = 0;
+                        data.defaultValue.INT() = 0;
                         helper.MakeInputEnum(data);
                         
-                        data.defaultValue.FLT = 1.0f;
+                        data.defaultValue.FLT() = 1.0f;
                         data.name = "scaleVelocity";
                         data.shortName = "scale_velocity";
                         data.type = AI_TYPE_FLOAT;
                         helper.MakeInputFloat(data);  
 
-                        data.defaultValue.BOOL = true;
+                        data.defaultValue.BOOL() = true;
                         data.name = "loadAtInit";
                         data.shortName = "load_at_init";
                         data.type = AI_TYPE_BOOLEAN;
@@ -760,7 +761,7 @@ class BB_gpuCacheTranslator : public CShapeTranslator
                    MFnDependencyNode dNode(obj);
                    MPlug plug = dNode.findPlug("aiDisplacementPadding");
                    if (!plug.isNull())
-                      dispPadding = MAX(dispPadding, plug.asFloat());
+                      dispPadding = AiMax(dispPadding, plug.asFloat());
                    if (!enableAutoBump)
                    {
                       plug = dNode.findPlug("aiDisplacementAutoBump");
