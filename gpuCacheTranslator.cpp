@@ -545,196 +545,163 @@ void GpuCacheTranslator::ExportMotion( AtNode *node )
 void GpuCacheTranslator::nodeInitialiser( CAbTranslator context )
 {
         CExtensionAttrHelper helper( context.maya, "procedural" );
+        CShapeTranslator::MakeCommonAttributes(helper);
+        CShapeTranslator::MakeMayaVisibilityFlags(helper);
 
-        // make the attributes 
         CAttrData data;
-        data.stringDefault = "";
+        // make the attributes 
+        data.defaultValue.STR() = AtString("");
         data.name = "aiTraceSets";
         data.shortName = "trace_sets";
-        data.type = AI_TYPE_STRING;
+        helper.MakeInputString ( data );
 
-        helper.MakeInput(data);
-
-        data.stringDefault = "";
+        data.defaultValue.STR() = AtString("");
         data.name = "aiSssSetname";
         data.shortName = "ai_sss_setname";
-        data.type = AI_TYPE_STRING;
-        helper.MakeInput(data);
+        helper.MakeInputString ( data );
 
-
-        data.stringDefault = "";
+        data.defaultValue.STR() = AtString("");
         data.name = "objectPattern";
         data.shortName = "object_pattern";
-        data.type = AI_TYPE_STRING;
-        helper.MakeInput(data);
+        helper.MakeInputString ( data );
 
-        data.stringDefault = "";
+        data.defaultValue.STR() = AtString("");
         data.name = "excludePattern";
         data.shortName = "exclude_pattern";
-        data.type = AI_TYPE_STRING;
-        helper.MakeInput(data);
+        helper.MakeInputString ( data );
 
-        data.stringDefault = "";
+        data.defaultValue.STR() = AtString("");
         data.name = "namePrefix";
         data.shortName = "name_prefix";
-        data.type = AI_TYPE_STRING;
-        helper.MakeInput(data);                        
+        helper.MakeInputString ( data );                        
 
+        data.defaultValue.BOOL() = false;
         data.name = "makeInstance";
         data.shortName = "make_instance";
-        data.type = AI_TYPE_BOOLEAN;
-        data.defaultValue.BOOL() = false;
         helper.MakeInputBoolean(data);
 
         data.defaultValue.BOOL() = false;
         data.name = "flipv";
         data.shortName = "flip_v";
-        data.type = AI_TYPE_BOOLEAN;
         helper.MakeInputBoolean(data);
 
         data.defaultValue.BOOL() = false;
         data.name = "invertNormals";
         data.shortName = "invert_normals";
-        data.type = AI_TYPE_BOOLEAN;
         helper.MakeInputBoolean(data);
 
-        data.stringDefault = "";
+        data.defaultValue.STR() = AtString("");
         data.name = "shaderAssignation";
         data.shortName = "shader_assignation";
-        data.type = AI_TYPE_STRING;
-        helper.MakeInput(data);    
+        helper.MakeInputString ( data );    
 
-        data.stringDefault = "";
+        data.defaultValue.STR() = AtString("");
         data.name = "displacementAssignation";
         data.shortName = "displacement_assignation";
-        data.type = AI_TYPE_STRING;
-        helper.MakeInput(data);  
+        helper.MakeInputString ( data );  
 
-        data.stringDefault = "";
+        data.defaultValue.STR() = AtString("");
         data.name = "shaderAssignmentfile";
         data.shortName = "shader_assignment_file";
-        data.type = AI_TYPE_STRING;
-        helper.MakeInput(data); 
+        helper.MakeInputString ( data ); 
 
-        data.stringDefault = "";
+        data.defaultValue.STR() = AtString("");
         data.name = "overrides";
         data.shortName = "overrides";
-        data.type = AI_TYPE_STRING;
-        helper.MakeInput(data);                             
+        helper.MakeInputString ( data );                             
 
-        data.stringDefault = "";
+        data.defaultValue.STR() = AtString("");
         data.name = "overridefile";
         data.shortName = "override_file";
-        data.type = AI_TYPE_STRING;
-        helper.MakeInput(data);     
+        helper.MakeInputString ( data );     
 
-        data.stringDefault = "";
+        data.defaultValue.STR() = AtString("");
         data.name = "userAttributes";
         data.shortName = "user_attributes";
-        data.type = AI_TYPE_STRING;
-        helper.MakeInput(data);     
+        helper.MakeInputString ( data );     
         
-        data.stringDefault = "";
+        data.defaultValue.STR() = AtString("");
         data.name = "userAttributesfile";
         data.shortName = "user_attributes_file";
-        data.type = AI_TYPE_STRING;
-        helper.MakeInput(data);     
-
+        helper.MakeInputString ( data );
 
         data.defaultValue.BOOL() = false;
         data.name = "skipJson";
         data.shortName = "skip_json";
-        data.type = AI_TYPE_BOOLEAN;
         helper.MakeInputBoolean(data);
-        
 
         data.defaultValue.BOOL() = false;
         data.name = "skipShaders";
         data.shortName = "skip_shaders";
-        data.type = AI_TYPE_BOOLEAN;
         helper.MakeInputBoolean(data);
-        
 
         data.defaultValue.BOOL() = false;
         data.name = "skipOverrides";
         data.shortName = "skip_overrides";
-        data.type = AI_TYPE_BOOLEAN;
         helper.MakeInputBoolean(data);
-        
 
         data.defaultValue.BOOL() = false;
         data.name = "skipUserAttributes";
         data.shortName = "skip_user_attributes";
-        data.type = AI_TYPE_BOOLEAN;
         helper.MakeInputBoolean(data);
-        
 
         data.defaultValue.BOOL() = false;
         data.name = "skipDisplacements";
         data.shortName = "skip_displacements";
-        data.type = AI_TYPE_BOOLEAN;
         helper.MakeInputBoolean(data);                        
 
-        data.stringDefault = "";
+        data.defaultValue.STR() = AtString("");
         data.name = "objectPattern";
         data.shortName = "object_pattern";
-        data.type = AI_TYPE_STRING;
-        helper.MakeInput(data);     
-        
+        helper.MakeInputString ( data );
 
-        data.stringDefault = "";
+        data.defaultValue.STR() = AtString("");
         data.name = "assShaders";
         data.shortName = "ass_shaders";
-        data.type = AI_TYPE_STRING;
-        helper.MakeInput(data);   
+        helper.MakeInputString ( data );   
 
         data.defaultValue.FLT() = 0.1f;
         data.name = "radiusPoint";
         data.shortName = "radius_point";
-        data.type = AI_TYPE_FLOAT;
         helper.MakeInputFloat(data);     
 
         data.defaultValue.FLT() = 0.0f;
         data.name = "timeOffset";
         data.shortName = "time_offset";
-        data.type = AI_TYPE_FLOAT;
         helper.MakeInputFloat(data);
 
         data.defaultValue.FLT() = 0.0f;
         data.name = "frame";
         data.shortName = "frame";
-        data.type = AI_TYPE_FLOAT;
         helper.MakeInputFloat(data);  
         
         // radiusCurve, this can be textured to give varying width along the curve
         data.defaultValue.FLT() = 0.01f;
         data.name = "radiusCurve";
         data.shortName = "radius_curve";
-        data.type = AI_TYPE_FLOAT;
         data.hasMin = true;
         data.min.FLT() = 0.0f;
         data.hasSoftMax = true;
         data.softMax.FLT() = 1.0f;
         helper.MakeInputFloat(data); 
 
+        MStringArray  curveTypeEnum;
+        curveTypeEnum.append ( "ribbon" );
+        curveTypeEnum.append ( "thick" );
+        data.defaultValue.INT() = 0;
         data.name = "modeCurve";
         data.shortName = "mode_curve";
-        data.enums.append("ribbon");
-        data.enums.append("thick");
-        data.enums.append("oriented");
-        data.defaultValue.INT() = 0;
+        data.enums = curveTypeEnum;
         helper.MakeInputEnum(data);
         
         data.defaultValue.FLT() = 1.0f;
         data.name = "scaleVelocity";
         data.shortName = "scale_velocity";
-        data.type = AI_TYPE_FLOAT;
         helper.MakeInputFloat(data);  
 
         data.defaultValue.BOOL() = true;
         data.name = "loadAtInit";
         data.shortName = "load_at_init";
-        data.type = AI_TYPE_BOOLEAN;
         helper.MakeInputBoolean(data);      
 }
 

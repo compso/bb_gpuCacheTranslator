@@ -3,11 +3,15 @@
 
 #include <extension/Extension.h>
 #include <maya/MTypes.h> 
+#include <maya/MDGMessage.h>
+#include <maya/MNodeMessage.h>
+#include <maya/MFileObject.h>
+#include <maya/MGlobal.h>
 
 extern "C"
 {
 
-    DLLEXPORT void initializeExtension( CExtension &extension )
+    DLLEXPORT void initializeExtension( CExtension& extension )
     {
         MStatus status;
 
@@ -26,7 +30,7 @@ extern "C"
                                                GpuCacheTranslator::nodeInitialiser);
     }
 
-    DLLEXPORT void deinitializeExtension( CExtension &extension )
+    DLLEXPORT void deinitializeExtension( CExtension& extension )
     {
     }
 
