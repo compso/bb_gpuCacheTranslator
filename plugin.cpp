@@ -15,7 +15,7 @@ extern "C"
     {
         MStatus status;
 
-        const char * pluginVersion = "1.3.1";
+        const char * pluginVersion = "2.0.0";
 
         MString info = "MTOA gpuCache Translator v";
         info += pluginVersion;
