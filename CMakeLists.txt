@@ -36,10 +36,12 @@
 
 
 SET( H_FILES
+  gpuCacheTranslator.h
 )
 
 SET( CXX_FILES
-	BB_gpuCacheTranslator.cpp
+	gpuCacheTranslator.cpp
+  plugin.cpp
 )
 
 SET( MTOA_TEMPLATE_FILES
@@ -63,8 +65,8 @@ INCLUDE_DIRECTORIES( ${ALEMBIC_MTOA_INCLUDE_PATH} ) # Lets hard codee this path 
 INCLUDE_DIRECTORIES( "/development/playground/maya/include" )
 
 
-ADD_MAYA_CXX_PLUGIN( bb_gpuCacheTranslator ${SOURCE_FILES} )
-TARGET_LINK_LIBRARIES( bb_gpuCacheTranslator
+ADD_MAYA_CXX_PLUGIN( gpuCacheTranslator ${SOURCE_FILES} )
+TARGET_LINK_LIBRARIES( gpuCacheTranslator
   ${MAYA_LIBRARIES}
   ${CORE_LIBS}
   ${ALEMBIC_ILMBASE_LIBS}
@@ -72,9 +74,9 @@ TARGET_LINK_LIBRARIES( bb_gpuCacheTranslator
   ${ALEMBIC_ARNOLD_LIBARNOLD}
   ${CMAKE_THREAD_LIBS_INIT}
   ${ZLIB_LIBRARIES} ${EXTERNAL_MATH_LIBS} )
-ALEMBIC_SET_PROPERTIES(bb_gpuCacheTranslator)
+ALEMBIC_SET_PROPERTIES(gpuCacheTranslator)
 
-INSTALL( TARGETS bb_gpuCacheTranslator
+INSTALL( TARGETS gpuCacheTranslator
          DESTINATION mtoa/$ENV{MAYA_VERSION}/translator )
 
 INSTALL( FILES ${MTOA_TEMPLATE_FILES}
